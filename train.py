@@ -22,6 +22,7 @@ import export_model
 import losses
 import frame_level_models
 import video_level_models
+import nextvlad
 import readers
 import tensorflow as tf
 import tensorflow.contrib.slim as slim
@@ -85,12 +86,12 @@ if __name__ == "__main__":
   flags.DEFINE_float("learning_rate_decay_examples", 4000000,
                      "Multiply current learning rate by learning_rate_decay "
                      "every learning_rate_decay_examples.")
-  flags.DEFINE_integer("num_epochs", 5,
+  flags.DEFINE_integer("num_epochs", 3,
                        "How many passes to make over the dataset before "
                        "halting training.")
   flags.DEFINE_integer("max_steps", None,
                        "The maximum number of iterations of the training loop.")
-  flags.DEFINE_integer("export_model_steps", 1000,
+  flags.DEFINE_integer("export_model_steps", 10000,
                        "The period, in number of steps, with which the model "
                        "is exported for batch prediction.")
 
@@ -174,7 +175,7 @@ def get_input_data_tensors(reader,
         batch_size=batch_size,
         capacity=batch_size * 5,
         min_after_dequeue=batch_size,
-        allow_smaller_final_batch=True,
+        allow_smaller_final_batch=False,
         enqueue_many=True)
 
 
@@ -253,10 +254,16 @@ def build_graph(reader,
           num_readers=num_readers,
           num_epochs=num_epochs))
   tf.summary.histogram("model/input_raw", model_input_raw)
-
   feature_dim = len(model_input_raw.get_shape()) - 1
 
-  model_input = tf.nn.l2_normalize(model_input_raw, feature_dim)
+  offset = np.array([4./512] * 1024) # + [0] * feature_dim-1024)
+  offset = tf.constant(offset, dtype=tf.float32)
+
+  eigen_val = tf.constant(np.sqrt(np.load("yt8m_pca/eigenvals.npy")[:1024, 0]), dtype=tf.float32)
+
+  model_input = tf.multiply(model_input_raw - offset,  eigen_val + 1e-4) #tf.pad(eigen_val + 1e-4, [[0, 128]], constant_values=1.))
+  #model_input = tf.nn.l2_normalize(model_input_raw, feature_dim)
+
 
   tower_inputs = tf.split(model_input, num_towers)
   tower_labels = tf.split(labels_batch, num_towers)
@@ -286,6 +293,9 @@ def build_graph(reader,
             label_loss = result["loss"]
           else:
             label_loss = label_loss_fn.calculate_loss(predictions, tower_labels[i])
+            if "aux_predictions" in result.keys():
+              for pred in result["aux_predictions"]:
+                label_loss += label_loss_fn.calculate_loss(pred, tower_labels[i])
 
           if "regularization_loss" in result.keys():
             reg_loss = result["regularization_loss"]
@@ -344,7 +354,7 @@ class Trainer(object):
 
   def __init__(self, cluster, task, train_dir, model, reader, model_exporter,
                log_device_placement=True, max_steps=None,
-               export_model_steps=1000):
+               export_model_steps=10000):
     """"Creates a Trainer.
 
     Args:
@@ -358,7 +368,7 @@ class Trainer(object):
     self.is_master = (task.type == "master" and task.index == 0)
     self.train_dir = train_dir
     self.config = tf.ConfigProto(
-        allow_soft_placement=True,log_device_placement=log_device_placement)
+        allow_soft_placement=True, log_device_placement=log_device_placement)
     self.model = model
     self.reader = reader
     self.model_exporter = model_exporter
@@ -431,7 +441,7 @@ class Trainer(object):
         init_op=init_op,
         is_chief=self.is_master,
         global_step=global_step,
-        save_model_secs=15 * 60,
+        save_model_secs=30 * 60,
         save_summaries_secs=120,
         saver=saver)
 
@@ -555,7 +565,7 @@ class Trainer(object):
     meta_filename = latest_checkpoint + ".meta"
     if not gfile.Exists(meta_filename):
       logging.info("%s: No meta graph file found. Building a new model.",
-                     task_as_string(self.task))
+                   task_as_string(self.task))
       return None
     else:
       return meta_filename
@@ -585,7 +595,7 @@ class Trainer(object):
                  batch_size=FLAGS.batch_size,
                  num_epochs=FLAGS.num_epochs)
 
-    return tf.train.Saver(max_to_keep=0, keep_checkpoint_every_n_hours=0.25)
+    return tf.train.Saver(max_to_keep=2, keep_checkpoint_every_n_hours=0.5)
 
 
 def get_reader():
@@ -673,7 +683,7 @@ def main(unused_argv):
   # Dispatch to a master, a worker, or a parameter server.
   if not cluster or task.type == "master" or task.type == "worker":
     model = find_class_by_name(FLAGS.model,
-        [frame_level_models, video_level_models])()
+        [frame_level_models, video_level_models, nextvlad])()
 
     reader = get_reader()
 

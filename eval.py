@@ -129,8 +129,12 @@ def build_graph(reader,
   feature_dim = len(model_input_raw.get_shape()) - 1
 
   # Normalize input features.
-  model_input = tf.nn.l2_normalize(model_input_raw, feature_dim)
+  # model_input = tf.nn.l2_normalize(model_input_raw, feature_dim)
+  offset = np.array([4. / 512] * 1024)# + [0] * 128)
+  offset = tf.constant(offset, dtype=tf.float32)
 
+  eigen_val = tf.constant(np.sqrt(np.load("yt8m_pca/eigenvals.npy")[:1024, 0]), dtype=tf.float32)
+  model_input = tf.multiply(model_input_raw - offset, eigen_val + 1e-4) #tf.pad(eigen_val + 1e-4, [[0, 128]], constant_values=1.))
   with tf.variable_scope("tower"):
     result = model.create_model(model_input,
                                 num_frames=num_frames,
@@ -300,7 +304,7 @@ def evaluate():
                                                    feature_sizes=feature_sizes)
 
     model = find_class_by_name(flags_dict["model"],
-        [frame_level_models, video_level_models])()
+        [frame_level_models, video_level_models, nextvlad])()
     label_loss_fn = find_class_by_name(flags_dict["label_loss"], [losses])()
 
     if FLAGS.eval_data_pattern is "":
