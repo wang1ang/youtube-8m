@@ -32,6 +32,7 @@ from tensorflow import flags
 from tensorflow import gfile
 from tensorflow import logging
 from tensorflow.python.client import device_lib
+import numpy as np
 import utils
 
 FLAGS = flags.FLAGS
