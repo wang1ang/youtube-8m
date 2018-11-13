@@ -79,15 +79,15 @@ if __name__ == "__main__":
       "regularization_penalty", 1.0,
       "How much weight to give to the regularization loss (the label loss has "
       "a weight of 1).")
-  flags.DEFINE_float("base_learning_rate", 0.01,
+  flags.DEFINE_float("base_learning_rate", 0.001, # 0.01
                      "Which learning rate to start with.")
-  flags.DEFINE_float("learning_rate_decay", 0.95,
+  flags.DEFINE_float("learning_rate_decay", 0.9, # 0.95
                      "Learning rate decay factor to be applied every "
                      "learning_rate_decay_examples.")
   flags.DEFINE_float("learning_rate_decay_examples", 4000000,
                      "Multiply current learning rate by learning_rate_decay "
                      "every learning_rate_decay_examples.")
-  flags.DEFINE_integer("num_epochs", 3,
+  flags.DEFINE_integer("num_epochs", 15, # 3
                        "How many passes to make over the dataset before "
                        "halting training.")
   flags.DEFINE_integer("max_steps", None,
@@ -106,6 +106,10 @@ if __name__ == "__main__":
       "log_device_placement", False,
       "Whether to write the device on which every op will run into the "
       "logs on startup.")
+  flag.DEFINE_float("begin_rate", 0.143, "...")
+  flag.DEFINE_float("t_mul", 2.0, "..")
+  flag.DEFINE_float("m_mul", 1.0, "..")
+  flag.DEFINE_float("base_steps", 19000, "..")
 
 def validate_class_name(flag_value, category, modules, expected_superclass):
   """Checks that the given string matches a class of the expected type.
@@ -237,7 +241,7 @@ def build_graph(reader,
     logging.info("No GPUs found. Training on CPU.")
     num_towers = 1
     device_string = '/cpu:%d'
-
+  '''
   learning_rate = tf.train.exponential_decay(
       base_learning_rate,
       global_step * batch_size * num_towers,
@@ -245,7 +249,16 @@ def build_graph(reader,
       learning_rate_decay,
       staircase=True)
   tf.summary.scalar('learning_rate', learning_rate)
-
+  '''
+  learning_rate = tf.train.cosine_decay_restarts(
+    base_learning_rate,
+    global_step * batch_size * num_towers, # first decay step
+    first_decay_steps=FLAGS.begin_rate * FLAGS.max_steps * batch_size * num_towers,
+    t_mul=FLAGS.t_mul, # 2.0
+    m_mul=FLAGS.m_mul, # 1.0,
+    alpha=0.00001,
+    name=None
+  )
   optimizer = optimizer_class(learning_rate)
   unused_video_id, model_input_raw, labels_batch, num_frames = (
       get_input_data_tensors(
@@ -442,7 +455,7 @@ class Trainer(object):
         init_op=init_op,
         is_chief=self.is_master,
         global_step=global_step,
-        save_model_secs=30 * 60,
+        save_model_secs=120 * 60,
         save_summaries_secs=120,
         saver=saver)
 
@@ -500,7 +513,8 @@ class Trainer(object):
       except tf.errors.OutOfRangeError:
         logging.info("%s: Done training -- epoch limit reached.",
                      task_as_string(self.task))
-
+      self.export_model(global_step_val, sv.saver, sv.save_path, sess)
+      
     logging.info("%s: Exited training loop.", task_as_string(self.task))
     sv.Stop()
 
