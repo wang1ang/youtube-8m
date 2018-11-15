@@ -106,10 +106,10 @@ if __name__ == "__main__":
       "log_device_placement", False,
       "Whether to write the device on which every op will run into the "
       "logs on startup.")
-  flag.DEFINE_float("begin_rate", 0.143, "...")
-  flag.DEFINE_float("t_mul", 2.0, "..")
-  flag.DEFINE_float("m_mul", 1.0, "..")
-  flag.DEFINE_float("base_steps", 19000, "..")
+  flags.DEFINE_float("begin_rate", 0.143, "...")
+  flags.DEFINE_float("t_mul", 2.0, "..")
+  flags.DEFINE_float("m_mul", 1.0, "..")
+  flags.DEFINE_float("base_steps", 19000, "..")
 
 def validate_class_name(flag_value, category, modules, expected_superclass):
   """Checks that the given string matches a class of the expected type.
