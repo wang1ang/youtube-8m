@@ -41,7 +41,7 @@ class NeXtVLADModel(models.BaseModel):
                      **unused_params):
         iterations = iterations or FLAGS.iterations
         add_batch_norm = add_batch_norm or FLAGS.dbof_add_batch_norm
-        random_frames = sample_random_frames or FLAGS.sample_random_frames
+        random_frames = FLAGS.sample_random_frames if sample_random_frames is None else sample_random_frames
         cluster_size = cluster_size or FLAGS.nextvlad_cluster_size
         hidden_size = hidden_size or FLAGS.nextvlad_hidden_size
         groups = groups or FLAGS.groups

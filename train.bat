@@ -1,0 +1,10 @@
+python train.py --groups=8 --nextvlad_cluster_size=128 --nextvlad_hidden_size=2048 --expansion=2 --gating_reduction=8 --drop_rate=0.5 --model=NeXtVLADModel --num_readers=8 --learning_rate_decay_examples 2000000 --video_level_classifier_model=LogisticModel --label_loss=CrossEntropyLoss --train_data_pattern=\\stcgpu-32\D$\yangwa\yt8m\frame\train*.tfrecord --train_dir=nextvlad_8g_5l2_5drop_128k_2048_2x80_logistic_30 --frame_features=True --feature_names="rgb" --feature_sizes="1024" --batch_size=80 --base_learning_rate=0.0002 --learning_rate_decay=0.8 --l2_penalty=1e-5 --max_step=120000 --num_gpu=2 --iterations=30 --start_new_model=False
+
+python  eval.py --groups=8 --nextvlad_cluster_size=128 --nextvlad_hidden_size=2048 --expansion=2 --gating_reduction=8 --drop_rate=0.5 --batch_size=80 --video_level_classifier_model=LogisticModel --l2_penalty=1e-5 --iterations=30 --label_loss=CrossEntropyLoss --eval_data_pattern=\\stcgpu-32\D$\yangwa\yt8m\frame\validate*.tfrecord --train_dir nextvlad_8g_5l2_5drop_128k_2048_2x80_logistic_30 --run_once=True
+
+
+rem cosine:
+python train.py --groups=8 --nextvlad_cluster_size=128 --nextvlad_hidden_size=2048 --expansion=2 --gating_reduction=8 --drop_rate=0.5 --model=NeXtVLADModel --num_readers=8 --learning_rate_decay_examples 2000000 --video_level_classifier_model=LogisticModel --label_loss=CrossEntropyLoss --train_data_pattern=\\stcgpu-32\D$\yangwa\yt8m\frame\train*.tfrecord --train_dir=nextvlad_8g_5l2_5drop_128k_2048_2x80_logistic_30_cosine --frame_features=True --feature_names="rgb" --feature_sizes="1024" --batch_size=80 --base_learning_rate=0.001 --learning_rate_decay=0.8 --l2_penalty=1e-5 --max_steps=146000 --num_gpu=2 --iterations=30 --start_new_model=False
+
+python  eval.py --groups=8 --nextvlad_cluster_size=128 --nextvlad_hidden_size=2048 --expansion=2 --gating_reduction=8 --drop_rate=0.5 --batch_size=80 --video_level_classifier_model=LogisticModel --l2_penalty=1e-5 --iterations=30 --label_loss=CrossEntropyLoss --eval_data_pattern=\\stcgpu-32\D$\yangwa\yt8m\frame\validate*.tfrecord --train_dir nextvlad_8g_5l2_5drop_128k_2048_2x80_logistic_30_cosine --run_once=True
+
