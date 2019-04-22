@@ -139,7 +139,7 @@ class NeXtVLADModel(models.BaseModel):
             scope="hidden_bn",
             fused=False)
 
-        activation = tf.nn.relu(activation)
+        activation = tf.nn.relu(activation, name='embedding1')
 
         gating_weights_1 = tf.get_variable("gating_weights_1",
                                            [hidden_size, hidden_size // gating_reduction],
@@ -164,7 +164,7 @@ class NeXtVLADModel(models.BaseModel):
         gates = tf.sigmoid(gates)
         tf.summary.histogram("final_gates", gates)
 
-        activation = tf.multiply(activation, gates)
+        activation = tf.multiply(activation, gates, name="embedding2")
 
         aggregated_model = getattr(video_level_models,
                                    FLAGS.video_level_classifier_model)
